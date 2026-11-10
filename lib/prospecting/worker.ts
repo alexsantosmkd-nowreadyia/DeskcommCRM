@@ -12,7 +12,6 @@ import {
 import { gerarAbordagemDeFormulario } from "@/lib/agent-engine/agent/abordagem-de-formulario";
 import { llmEdgeConfigFromEnv } from "@/lib/agent-engine/edge/llm/credentials";
 import { assertServiceBoundarySupabase } from "@/lib/atendimento/origem";
-import { comSaida } from "./rodape-de-saida";
 import { splitForSend } from "@/lib/agent-engine/agent/split-message";
 import type { Message } from "@/lib/types/messaging";
 import {
@@ -395,28 +394,7 @@ export async function sendNextCandidate(
     });
     if (!authorization.ok)
       throw new ProspectingError("Não foi possível preparar o atendimento da resposta.");
-    // A SAÍDA é montada aqui — não pedida ao modelo — e vai JUNTO DA PRIMEIRA
-    // BOLHA quando a CAMPANHA manda oferecê-la aí (`exit_offer`, migration 0705:
-    // ver o `if` depois de `splitForSend`). Sem ela, a saída que a pessoa usa é
-    // "Denunciar spam", que é
-    // invisível ao sistema e queima o número do CLIENTE que instalou. O idioma
-    // sai de `organizations.locale`: um rodapé em português numa instalação em
-    // espanhol oferece uma palavra que a pessoa não responde, e o detector de
-    // opt-out só reconhece a palavra ISOLADA.
-    //
-    // POR QUE NA PRIMEIRA, e não na última (revisão do PR #2680): quem está do
-    // outro lado não abre a conversa por partes. Se qualquer bolha depois da
-    // primeira não sair — veto do canal, status não confirmado, ou a pessoa
-    // respondendo no meio — quem recebeu a apresentação fica SEM saída numa
-    // mensagem fria, que é o desfecho que mais queima número. O rodapé é a única
-    // parte da abordagem que não pode depender do resto ter dado certo.
-    //
-    // O corte vem ANTES do rodapé por isso: o texto do modelo é que é fatiado no
-    // estilo configurado, e o rodapé (parágrafo próprio, ~60 caracteres) entra na
-    // primeira bolha já pronta. Isso a deixa alguns caracteres acima de
-    // `split_max_chars` — é o mesmo preço que o `splitForSend` já paga quando o
-    // teto de bolhas do turno é atingido: a alternativa seria picar a saída em
-    // duas mensagens, e aí ela voltaria a depender de uma bolha posterior.
+    // Nenhum texto é colado aqui: a abordagem sai só com o que o agente escreveu.
     const baloes = splitForSend(
       generated.texto,
       agent.split_messages ?? false,
@@ -427,16 +405,6 @@ export async function sendNextCandidate(
     // `[]`), e a abordagem fria não pode sair sem bolha nenhuma: neste caso a
     // primeira bolha é vazia (e, no modo `first_message`, é ela que leva o rodapé).
     if (baloes.length === 0) baloes.push("");
-    // A SAÍDA ENTRA NA 1ª BOLHA SÓ QUANDO A CONFIGURAÇÃO MANDA OFERECÊ-LA JÁ NA
-    // PRIMEIRA MENSAGEM. `exit_offer` (migration 0705, `prospecting_saida_configuravel`)
-    // tem dois valores: em `"first_message"` a saída sai junto da PRIMEIRA
-    // mensagem — é o caso acima, e sem ela quem recebe a apresentação fica SEM
-    // caminho de volta; em `"second_message"` a saída é RESERVADA por
-    // `saida-configuravel.ts` (`exit_offered_at`) e servida na SEGUNDA mensagem
-    // (é o `context.ts` que manda o agente só cumprimentar na primeira). Pôr o
-    // rodapé aqui incondicionalmente ofereceria a saída DUAS vezes — e na
-    // mensagem que o operador não escolheu.
-    if (cfg.exit_offer === "first_message") baloes[0] = comSaida(baloes[0]!, locale);
     let mensagem: Message | undefined;
     let falhouEm: Message | undefined;
     /** A conversa deixou de ser fria ENTRE bolhas: a pessoa respondeu ou um humano assumiu. */
@@ -559,16 +527,14 @@ export async function sendNextCandidate(
     // A abordagem SAIU quando a PRIMEIRA bolha foi confirmada — pare o resto
     // porque a pessoa respondeu, porque o canal não confirmou uma bolha seguinte
     // ou porque ela lançou. A pessoa recebeu a apresentação: `failed` aqui a
-    // tiraria de `SQL_CONTAR_ENVIO_AUTOMATICO` (`saida-configuravel.ts`) e do
+    // tiraria da contagem de envios automáticos e do
     // `context.ts`, que só enxergam `sending`/`sent` — e no modo
     // `second_message` ela nunca receberia a saída. O que não saiu fica na
     // conversa (a bolha marcada `failed`) e na trilha (`bubbles_sent`).
     const abordou = entregues > 0;
-    const ehPrimeira = cfg.exit_offer === "first_message";
     await db.query(
       `update prospecting_candidates set status=$3,
         automatic_sends = case when $3 = 'sent' then 1 else automatic_sends end,
-        exit_offered_at = case when $3 = 'sent' and ${ehPrimeira} then now() else exit_offered_at end,
         error=$4, updated_at=now() where organization_id=$1 and id=$2`,
       [
         c.organization_id,

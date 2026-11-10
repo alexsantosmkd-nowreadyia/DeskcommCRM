@@ -218,7 +218,6 @@ import { msAteAJanelaAbrir } from './janela-de-atendimento';
 import { turnoDisparaNasMensagens } from './palavra-chave-do-gatilho';
 import { agenteJaRespondeuNoAtendimento } from './agente-ja-respondeu';
 import { enviaAvisoForaDoHorario, portasDeProducao } from './aviso-fora-do-horario';
-import { enviarComSaidaConfiguravel } from "@/lib/prospecting/saida-configuravel";
 import { janelaDeEnvioAberta, proximaAberturaDaJanela } from '../pacing/engine';
 import { adiadoPorJanela } from '../pacing/adiados-da-janela';
 import { loadChannelKnobs } from '../pacing/store';
@@ -4931,9 +4930,8 @@ async function executarTurnoDoAgente(
                   ...(media ? { media } : {}),
                 });
               };
-              // Saída configurável da prospecção (fora de prévia); ver saida-configuravel.ts.
-              const saida = { db: pool, organizationId: tenantId, conversationId: preview ? null : input.conversationId, via: "inbound_turn" as const, mensagem: { jobId: preview ? "" : liveJob().id, seq: seq + 1 }, avisar: (m: string, c: Record<string, unknown>) => runLog.warn(m, c) };
-              return enviarComSaidaConfiguravel(saida, finalBody, (finalBody) => {
+              // O corpo é o que o agente escreveu (prompt do agente + instrução da campanha); nada é colado aqui.
+              return ((finalBody: string) => {
                   corposEnviados.push(finalBody);
                   // Cada foto é uma mensagem física: só vão as que cabem no teto do turno,
                   // medido ANTES DE CADA FOTO, depois do texto.
@@ -4957,7 +4955,7 @@ async function executarTurnoDoAgente(
                         send: (bubble) => enviar(bubble),
                       }),
                   });
-              });
+              })(finalBody);
             },
           };
           let chain = await runBeforeSend(beforeSendArgs);

@@ -655,18 +655,14 @@ export function entradasDaAbordagem(args: {
   voz?: string;
   previa?: PreviaSalva | null;
 }): { instrucao: string; dados: Record<string, string> } {
-  const soCumprimenta = (args.config.exit_offer ?? "first_message") !== "first_message";
   const peloAgente = args.config.fonte_da_abordagem === "agente";
   const instrucaoBase = instrucaoDeAbordagemFria(
     args.config.instruction,
     args.config.qualification,
     args.voz || undefined,
     peloAgente ? null : args.estrategia,
-    soCumprimenta,
   );
   const instrucao = peloAgente ? `${instrucaoBase}\n${LINHA_DA_FONTE_AGENTE}` : instrucaoBase;
-  const dados = soCumprimenta
-    ? montarDadosDeAbordagem(args.data, null, null)
-    : montarDadosDeAbordagem(args.data, peloAgente ? null : args.site, args.previa ?? null);
+  const dados = montarDadosDeAbordagem(args.data, peloAgente ? null : args.site, args.previa ?? null);
   return { instrucao, dados };
 }

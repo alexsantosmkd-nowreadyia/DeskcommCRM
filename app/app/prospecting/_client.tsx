@@ -12,7 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { apiClient } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/types";
 import { useT } from "@/hooks/i18n/useT";
-import { rodapeDeSaida } from "@/lib/prospecting/rodape-de-saida";
 import {
   RAZAO_NAO_SELECIONADA,
   OFERTAS_DA_CAMPANHA,
@@ -128,9 +127,6 @@ const emptyConfig: CampaignConfig = {
   legal_basis_ref: "",
   // Campanha nova nasce no modo recomendado; a configuração já gravada manda no que existe.
   funnel_entry: "on_send",
-  // A saída é oferecida na primeira mensagem por padrão; config gravada antes desta chave
-  // segue igual.
-  exit_offer: "first_message",
   // O ângulo da primeira mensagem vem da estratégia do site por padrão (o de sempre).
   fonte_da_abordagem: "estrategia",
 };
@@ -1959,52 +1955,6 @@ export function ProspectingClient() {
                           </fieldset>
                           <fieldset className="space-y-2">
                             <legend className="text-sm font-medium">
-                              {t("Quando oferecer a opção de parar de receber")}
-                            </legend>
-                            <label className="flex items-start gap-2 text-sm">
-                              <input
-                                type="radio"
-                                name="prospecting-exit-offer"
-                                checked={(config.exit_offer ?? "first_message") === "first_message"}
-                                onChange={() => update("exit_offer", "first_message")}
-                                className="mt-1"
-                              />
-                              <span>
-                                {t("Na primeira mensagem (recomendado)")}
-                                <span className="block text-xs text-muted-foreground">
-                                  {/* A frase é a ENVIADA: idioma da organização, não da interface. */}
-                                  {t("A abertura já diz como parar:")}{" "}
-                                  {rodapeDeSaida(data?.organization_locale)}
-                                </span>
-                              </span>
-                            </label>
-                            <label className="flex items-start gap-2 text-sm">
-                              <input
-                                type="radio"
-                                name="prospecting-exit-offer"
-                                checked={(config.exit_offer ?? "first_message") === "second_message"}
-                                onChange={() => update("exit_offer", "second_message")}
-                                className="mt-1"
-                              />
-                              <span>
-                                {t("Atrasar para a 2ª mensagem")}
-                                <span className="block text-xs text-muted-foreground">
-                                  {t(
-                                    "A abertura só cumprimenta e confirma se é a empresa certa, sem oferta. A instrução para parar vai na mensagem seguinte.",
-                                  )}
-                                </span>
-                              </span>
-                            </label>
-                            {config.exit_offer === "second_message" && (
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                {t(
-                                  "Exemplo de instrução para os atrasados: na primeira mensagem, só cumprimente e pergunte se é da empresa. Quando a pessoa responder, apresente-se e peça permissão para mostrar o serviço.",
-                                )}
-                              </p>
-                            )}
-                          </fieldset>
-                          <fieldset className="space-y-2">
-                            <legend className="text-sm font-medium">
                               {t("De onde vem a primeira mensagem")}
                             </legend>
                             <label className="flex items-start gap-2 text-sm">
@@ -2399,15 +2349,6 @@ export function ProspectingClient() {
                               {c.message_status && (
                                 <p className="mt-1 text-xs text-muted-foreground">
                                   {t("Mensagem:")} {c.message_status}
-                                </p>
-                              )}
-                              {/* Só quem já recebeu a 1ª mensagem: o worker grava automatic_sends=1 quando ela sai. */}
-                              {campaign?.config?.exit_offer === "second_message" &&
-                                (c.automatic_sends ?? 0) > 0 && (
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                  {c.exit_offered_at
-                                    ? t("Saída oferecida")
-                                    : t("Saída ainda não oferecida")}
                                 </p>
                               )}
                             </td>

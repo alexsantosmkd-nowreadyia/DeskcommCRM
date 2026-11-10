@@ -12,7 +12,7 @@
  *      palavra da abordagem.
  *
  * Medido numa instalação real em espanhol em 02/11/2026. A régua é
- * `organizations.locale`, a MESMA do rodapé de saída (`rodape-de-saida.ts`) e da
+ * `organizations.locale`, a MESMA da
  * tela; uma variante regional (`es-MX`) casa o idioma servido (`idiomaDoTexto`),
  * e locale vazio ou desconhecido continua português — quem não escolheu nada
  * fica exatamente como antes.

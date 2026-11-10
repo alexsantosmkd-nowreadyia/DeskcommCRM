@@ -104,17 +104,6 @@ describe("entradasDaAbordagem — modo `estrategia` (o de sempre)", () => {
     expect(r.instrucao).toBe(instrucaoDeAbordagemFria(INSTRUCAO, QUALIFICACAO, undefined, ESTRATEGIA, false));
   });
 
-  it("`exit_offer = second_message`: só cumprimenta, sem estratégia, sem Auditoria e sem rascunho", () => {
-    const r = entradasDaAbordagem(
-      base({ config: { instruction: INSTRUCAO, qualification: QUALIFICACAO, exit_offer: "second_message" } }),
-    );
-    expect(r.instrucao).toBe(instrucaoDeAbordagemFria(INSTRUCAO, QUALIFICACAO, VOZ, ESTRATEGIA, true));
-    expect(r.dados).toEqual(montarDadosDeAbordagem(DATA, null, null));
-    expect(r.instrucao).toContain("NÃO apresenta serviço");
-    expect(r.instrucao).not.toContain("Estratégia de abordagem definida");
-    expect(Object.keys(r.dados)).not.toContain("Auditoria");
-    expect(Object.keys(r.dados)).not.toContain("Rascunho de abordagem");
-  });
 });
 
 describe("entradasDaAbordagem — modo `agente`", () => {
@@ -153,10 +142,4 @@ describe("entradasDaAbordagem — modo `agente`", () => {
     expect(r.dados).toEqual(montarDadosDeAbordagem(DATA, null, null));
   });
 
-  it("`second_message` vence a fonte: só cumprimenta, sem a linha do agente e sem Auditoria", () => {
-    const r = entradasDaAbordagem(base({ config: { ...cfgAgente, exit_offer: "second_message" } }));
-    expect(r.instrucao).toContain("NÃO apresenta serviço");
-    expect(r.dados).toEqual(montarDadosDeAbordagem(DATA, null, null));
-    expect(r.dados["Rascunho de abordagem"]).toBeUndefined();
-  });
 });

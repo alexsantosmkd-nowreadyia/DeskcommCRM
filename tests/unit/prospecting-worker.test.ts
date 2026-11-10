@@ -81,7 +81,6 @@ vi.mock("@/lib/prospecting/store", () => ({
 // aqui só se mede QUANDO o tick o chama (ordem, fora do bloqueio, fail-open).
 vi.mock("@/lib/prospecting/preparo", () => ({ prepararCandidatos: mocks.preparo }));
 import { sendNextCandidate, tickProspecting } from "@/lib/prospecting/worker";
-import { rodapeDeSaida } from "@/lib/prospecting/rodape-de-saida";
 import { ProspectingError } from "@/lib/prospecting/provider";
 import { OrgNaoOperanteError } from "@/lib/organizacao/operante";
 import { withProspectingLock } from "@/lib/prospecting/store";
@@ -288,104 +287,10 @@ describe("gradual outreach", () => {
     ).toBe(true);
   });
 
-  it("envio não confirmado não marca contagem nem reserva", async () => {
-    mocks.send.mockResolvedValue({ status: "failed" });
-    const db = database();
-    await sendNextCandidate({} as never, db as never, {} as never, campaign);
-    const updates = db.query.mock.calls
-      .map(([q]) => q)
-      .filter((q) => q.includes("automatic_sends = case when"));
-    expect(updates.length).toBe(1);
-    // O status enviado é 'failed' (não 'sent'), então o case when não grava 1 nem now().
-    const params = (db.query.mock.calls.find(([q]) => q.includes("automatic_sends = case when")) as [string, unknown[]] | undefined)?.[1];
-    expect(params?.[2]).toBe("failed");
-    // Sanidade: o ramo antigo (incondicional) usaria automatic_sends=1 direto.
-    expect(updates[0]!).not.toContain("automatic_sends=1");
-    expect(updates[0]!).not.toContain("exit_offered_at=now()");
-  });
 
-  it("modo first_message (padrão): corpo leva a saída", async () => {
-    const db = database();
-    await sendNextCandidate({} as never, db as never, {} as never, campaign);
-    const body = mocks.send.mock.calls[0]?.[2]?.body as string;
-    expect(body).toContain("PARAR");
-  });
 
-  it("modo second_message: corpo é o texto cru (sem PARAR) e a instrução traz a frase sem oferta", async () => {
-    const atrasada = {
-      ...campaign,
-      config: { ...campaign.config, exit_offer: "second_message" },
-    } as Campaign;
-    const db = database();
-    await sendNextCandidate({} as never, db as never, {} as never, atrasada);
-    const body = mocks.send.mock.calls[0]?.[2]?.body as string;
-    expect(body).not.toContain("PARAR");
-    const instrucao = mocks.generate.mock.calls[0]?.[2]?.instrucao as string;
-    expect(instrucao).toContain("NÃO apresenta serviço");
-  });
 
-  it("config sem exit_offer comporta-se como first_message", async () => {
-    const semChave = {
-      ...campaign,
-      config: { ...campaign.config },
-    } as Campaign;
-    delete (semChave.config as Record<string, unknown>).exit_offer;
-    const db = database();
-    await sendNextCandidate({} as never, db as never, {} as never, semChave);
-    const body = mocks.send.mock.calls[0]?.[2]?.body as string;
-    expect(body).toContain("PARAR");
-    const instrucao = mocks.generate.mock.calls[0]?.[2]?.instrucao as string;
-    expect(instrucao).not.toContain("NÃO apresenta serviço");
-  });
 
-  it("modo second_message: os dados da 1ª mensagem não levam Auditoria, Detalhe nem Rascunho", async () => {
-    // Auditoria definitiva + prévia válida do MESMO agente: no modo da 1ª, as três
-    // chaves entram (controle); no da 2ª, a 1ª mensagem só cumprimenta e nenhuma
-    // entra — o prompt frio deixa citar a Auditoria "como o motivo do contato".
-    const verificadoEm = new Date().toISOString();
-    const auditado = {
-      ...candidate,
-      data: {
-        name: "Example",
-        socials: [],
-        website: "https://example.test/",
-        site: {
-          ver: 1,
-          // Domínio morto é o veredito PROVADO de "não abre" (#3723): 503 seria
-          // medição barrada, que não se cita.
-          classe: "fora-do-ar",
-          problemas: ["dns-morto"],
-          checklist: { tem: [], falta: [] },
-          final_url: "https://example.test/",
-          http_status: null,
-          tempo_ms: 300,
-          conteudo_resumo: "Página de erro do servidor",
-          pagespeed: null,
-          verificado_em: verificadoEm,
-          provisorio: false,
-          tentativas: 0,
-        },
-        previa: {
-          texto: "RASCUNHO-COM-OFERTA",
-          baseada_em: `fora-do-ar@${verificadoEm}`,
-          gerada_em: verificadoEm,
-          agente_id: id,
-        },
-      },
-    };
-    const dadosDoModo = async (modo: "first_message" | "second_message") => {
-      vi.clearAllMocks();
-      mocks.generate.mockResolvedValue({ ok: true, texto: "Olá. Falo com a Example?" });
-      const comModo = { ...campaign, config: { ...campaign.config, exit_offer: modo } } as Campaign;
-      await sendNextCandidate({} as never, database(undefined, auditado) as never, {} as never, comModo);
-      return mocks.generate.mock.calls[0]?.[2]?.dados as Record<string, string>;
-    };
-    const primeira = await dadosDoModo("first_message");
-    expect(Object.keys(primeira)).toEqual(expect.arrayContaining(["Auditoria", "Detalhe", "Rascunho de abordagem"]));
-    const segunda = await dadosDoModo("second_message");
-    expect(segunda["Empresa"]).toBe("Example");
-    for (const chave of ["Auditoria", "Detalhe", "Rascunho de abordagem"]) expect(segunda).not.toHaveProperty(chave);
-  });
 });
 
 /*
@@ -432,21 +337,13 @@ describe("abordagem fria obedece o Estilo de resposta do agente (issue #2665)", 
         corpo.length,
         `bolha acima do teto configurado (${MAX}): ${corpo}`,
       ).toBeLessThanOrEqual(MAX);
-    expect(corpos[0]!.length).toBeLessThanOrEqual(MAX + rodapeDeSaida(null).length + 2);
+    expect(corpos[0]!.length).toBeLessThanOrEqual(MAX + 2);
 
     // Nada do texto se perde no corte — as bolhas somadas são o texto inteiro.
     const somado = corpos.join(" ");
     expect(somado).toContain("vender mais.");
     expect(somado).toContain("atendem hoje.");
 
-    // A SAÍDA ("responda PARAR") chega JUNTO DA PRIMEIRA bolha. Se ela viesse na
-    // última — como no head anterior —, qualquer bolha que falhasse no meio
-    // deixaria a pessoa sem caminho de volta numa mensagem fria.
-    expect(corpos[0], "a saída não está na 1ª bolha").toContain("responda PARAR");
-    expect(
-      corpos.at(-1),
-      "a saída voltou a depender da ÚLTIMA bolha — o defeito medido na revisão do PR",
-    ).not.toContain("responda PARAR");
 
     // Recibo e idempotência do candidato ficam na PRIMEIRA bolha; as demais são
     // mensagens próprias, sem o id estável (repetir o id faria o handler
@@ -480,16 +377,6 @@ describe("abordagem fria obedece o Estilo de resposta do agente (issue #2665)", 
     );
   });
 
-  /**
-   * A CONFIGURAÇÃO DECIDE ONDE A SAÍDA É OFERECIDA (migration 0705).
-   *
-   * `exit_offer` tem dois valores, e o worker respeita os dois: em
-   * `first_message` a saída vai junto da PRIMEIRA bolha; em `second_message` a
-   * saída é RESERVADA por `saida-configuravel.ts` (`exit_offered_at`) e servida
-   * na SEGUNDA mensagem (`context.ts` manda o agente só cumprimentar na
-   * primeira). Pôr o rodapé aqui incondicionalmente ofereceria a saída duas
-   * vezes — e na mensagem que o operador não escolheu.
-   */
   async function bolhasComExitOffer(modo: "first_message" | "second_message") {
     mocks.generate.mockResolvedValue({ ok: true, texto: textoDoModelo });
     mocks.send.mockResolvedValue({ status: "sent", id: "balao" });
@@ -505,37 +392,7 @@ describe("abordagem fria obedece o Estilo de resposta do agente (issue #2665)", 
     };
   }
 
-  it("exit_offer=first_message: o rodapé sai na 1ª bolha e a reserva é gravada neste envio", async () => {
-    const { corpos, db } = await bolhasComExitOffer("first_message");
-    expect(corpos.length, "a abordagem saiu em uma mensagem só").toBeGreaterThan(1);
-    expect(corpos[0], "a saída não está na 1ª bolha").toContain("responda PARAR");
-    // Oferecida na PRIMEIRA mensagem, é neste envio que a saída fica reservada —
-    // é isso que impede a 2ª mensagem de oferecê-la de novo.
-    const reserva = db.query.mock.calls.find(([q]) => q.includes("exit_offered_at"));
-    expect(String(reserva?.[0])).toContain("and true then now()");
-  });
 
-  it("exit_offer=second_message: a 1ª bolha sai SEM o rodapé — a saída é da 2ª mensagem", async () => {
-    const { corpos, db } = await bolhasComExitOffer("second_message");
-    expect(corpos.length, "a abordagem saiu em uma mensagem só").toBeGreaterThan(1);
-    for (const corpo of corpos)
-      expect(
-        corpo,
-        "o rodapé saiu sem a configuração mandar: a saída seria oferecida duas vezes",
-      ).not.toContain("responda PARAR");
-    // O texto do modelo chega inteiro e fatiado: o que a configuração muda é ONDE
-    // a saída é oferecida, não o estilo de resposta.
-    const somado = corpos.join(" ");
-    expect(somado).toContain("vender mais.");
-    expect(somado).toContain("atendem hoje.");
-    // A GUARDA LEVE entre as bolhas seguintes continua valendo — a pessoa
-    // responder no meio PARA a abordagem (sem pausar a campanha).
-    expect(mocks.continuation).toHaveBeenCalledTimes(corpos.length - 1);
-    expect(dormir).toHaveBeenCalledTimes(corpos.length - 1);
-    // E este envio NÃO reserva a saída: quem reserva é a 2ª mensagem.
-    const reserva = db.query.mock.calls.find(([q]) => q.includes("exit_offered_at"));
-    expect(String(reserva?.[0])).toContain("and false then now()");
-  });
 
   it("sem o estilo ligado, a abordagem continua saindo em UMA mensagem (não regredir)", async () => {
     mocks.generate.mockResolvedValue({ ok: true, texto: textoDoModelo });
@@ -553,7 +410,6 @@ describe("abordagem fria obedece o Estilo de resposta do agente (issue #2665)", 
     expect(mocks.send).toHaveBeenCalledTimes(1);
     const corpo = String(mocks.send.mock.calls[0]?.[2]?.body);
     expect(corpo.startsWith(textoDoModelo)).toBe(true);
-    expect(corpo).toContain("responda PARAR");
     expect(mocks.send.mock.calls[0]?.[1]).toMatchObject({ internalMessageId: "stable-message" });
     expect(dormir).not.toHaveBeenCalled();
   });
@@ -622,36 +478,6 @@ describe("abordagem fria obedece o Estilo de resposta do agente (issue #2665)", 
     });
   });
 
-  it("second_message com a 2ª bolha não confirmada: a candidatura fica `sent` e a saída da 2ª mensagem continua garantida", async () => {
-    mocks.generate.mockResolvedValue({ ok: true, texto: textoDoModelo });
-    let balao = 0;
-    mocks.send.mockImplementation(async () => ({
-      status: balao++ === 0 ? "sent" : "queued",
-      id: `balao-${balao}`,
-    }));
-    const segunda = {
-      ...campaign,
-      config: { ...campaign.config, exit_offer: "second_message" },
-    } as Campaign;
-    const db = database(undefined, candidate, versaoComEstilo);
-    await sendNextCandidate({} as never, db as never, {} as never, segunda, dormir);
-
-    const [sql, params] = db.query.mock.calls.find(([q]) =>
-      String(q).startsWith("update prospecting_candidates set status=$3"),
-    ) as [string, unknown[]];
-    // `sent` é o que grava automatic_sends=1 e mantém o candidato visível para
-    // `SQL_CONTAR_ENVIO_AUTOMATICO`, que é quem serve a saída na 2ª mensagem.
-    expect(params, "a apresentação chegou e a saída nunca viria").toEqual([
-      id,
-      "candidate",
-      "sent",
-      null,
-    ]);
-    expect(sql).toContain("automatic_sends = case when $3 = 'sent' then 1");
-    expect(sql, "reservou a saída que este modo serve na 2ª mensagem").toContain(
-      "and false then now()",
-    );
-  });
 
   it("uma bolha seguinte que LANÇA no envio para só este candidato: não pausa a campanha nem perde a trilha", async () => {
     mocks.generate.mockResolvedValue({ ok: true, texto: textoDoModelo });
