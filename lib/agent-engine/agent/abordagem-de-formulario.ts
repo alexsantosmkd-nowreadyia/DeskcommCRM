@@ -55,6 +55,8 @@ export interface AbordagemDeFormularioInput {
   instrucao: string;
   /** Nome da fonte/origem, quando houver ("Landing de setembro"). */
   origem?: string | null;
+  /** Hora do envio já formatada (ex.: "09:30, manhã (bom dia)"). Opcional: sem ela, nada muda. */
+  agora?: string | null;
   /** Os campos como a pessoa preencheu: rótulo → valor. */
   dados: Record<string, string>;
   /** `false` quando o gatilho não é um formulário (tag, etapa, mensagem). */
@@ -254,6 +256,7 @@ export async function gerarAbordagemDeFormulario(
   // e deixá-lo fora abriria uma segunda porta para manter.
   const conteudo = [
     input.origem ? `Origem: ${input.origem}` : null,
+    input.agora ? `Agora: ${input.agora}` : null,
     formatarDados(input.dados),
   ]
     .filter((p): p is string => p !== null)

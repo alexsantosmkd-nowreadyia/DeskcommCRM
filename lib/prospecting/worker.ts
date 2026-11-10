@@ -10,6 +10,7 @@ import {
   proximaAberturaDaProspeccao,
 } from "@/lib/agent-engine/pacing/engine";
 import { gerarAbordagemDeFormulario } from "@/lib/agent-engine/agent/abordagem-de-formulario";
+import { horarioDeEnvio } from "./horario-do-contato";
 import { llmEdgeConfigFromEnv } from "@/lib/agent-engine/edge/llm/credentials";
 import { assertServiceBoundarySupabase } from "@/lib/atendimento/origem";
 import { splitForSend } from "@/lib/agent-engine/agent/split-message";
@@ -374,6 +375,7 @@ export async function sendNextCandidate(
       leadId: p.contact_id,
       instrucao,
       origem: "Pesquisa de empresas",
+      agora: horarioDeEnvio(),
       // NÃO é `automacao`: a pessoa não entrou em funil nenhum. O prompt do
       // ramo frio é o único que proíbe afirmar preenchimento — ver blocoDeModo.
       origemDaAbordagem: "prospeccao_fria",

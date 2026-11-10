@@ -19,6 +19,7 @@
 import type pg from "pg";
 
 import { gerarAbordagemDeFormulario } from "@/lib/agent-engine/agent/abordagem-de-formulario";
+import { horarioDeEnvio } from "./horario-do-contato";
 import { llmEdgeConfigFromEnv } from "@/lib/agent-engine/edge/llm/credentials";
 import { env } from "@/lib/env";
 import {
@@ -113,6 +114,7 @@ export async function gerarPreviaDoCandidato(
     leadId: linha.contact_id ?? null,
     instrucao,
     origem: "Pesquisa de empresas",
+    agora: horarioDeEnvio(),
     origemDaAbordagem: "prospeccao_fria",
     dados,
   });
