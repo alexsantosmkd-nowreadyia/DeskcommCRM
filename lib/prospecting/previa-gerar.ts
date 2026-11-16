@@ -100,7 +100,7 @@ export async function gerarPreviaDoCandidato(
       })
     : null;
   // A prévia gera DO ZERO: sem rascunho guardado (ver o cabeçalho).
-  const { instrucao, dados } = entradasDaAbordagem({
+  const { instrucao, dados, instrucaoManda } = entradasDaAbordagem({
     config: cfg.data,
     data: linha.data,
     site,
@@ -116,6 +116,7 @@ export async function gerarPreviaDoCandidato(
     origem: "Pesquisa de empresas",
     agora: horarioDeEnvio(),
     origemDaAbordagem: "prospeccao_fria",
+    instrucaoManda,
     dados,
   });
   if (!gerado.ok) return { ok: false, motivo: "ia_falhou", detalhe: gerado.reason };

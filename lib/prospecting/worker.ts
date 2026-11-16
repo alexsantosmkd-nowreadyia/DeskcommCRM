@@ -361,7 +361,7 @@ export async function sendNextCandidate(
     // dados), que o prompt frio deixa citar "como o motivo do contato". Modo
     // "prompt do agente": sem estratégia nem auditoria. A decisão mora em
     // `entradasDaAbordagem`, a MESMA que a prévia chama.
-    const { instrucao, dados } = entradasDaAbordagem({
+    const { instrucao, dados, instrucaoManda } = entradasDaAbordagem({
       config: cfg,
       data: p.data,
       site,
@@ -379,6 +379,7 @@ export async function sendNextCandidate(
       // NÃO é `automacao`: a pessoa não entrou em funil nenhum. O prompt do
       // ramo frio é o único que proíbe afirmar preenchimento — ver blocoDeModo.
       origemDaAbordagem: "prospeccao_fria",
+      instrucaoManda,
       dados,
     });
     if (!generated.ok)

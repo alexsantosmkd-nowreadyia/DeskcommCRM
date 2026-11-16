@@ -139,6 +139,11 @@ describe("entradasDaAbordagem — modo `agente`", () => {
     expect(r.dados["Empresa"]).toBe("Clínica Vitta");
   });
 
+  it("`instrucaoManda` é true só no modo agente", () => {
+    expect(entradasDaAbordagem(base({ config: cfgAgente })).instrucaoManda).toBe(true);
+    expect(entradasDaAbordagem(base()).instrucaoManda).toBe(false);
+  });
+
   it("funciona sem site e sem estratégia (site ainda sem veredito)", () => {
     const r = entradasDaAbordagem(base({ config: cfgAgente, site: null, estrategia: null, previa: null }));
     expect(r.instrucao).not.toContain(LINHA_REMOVIDA);

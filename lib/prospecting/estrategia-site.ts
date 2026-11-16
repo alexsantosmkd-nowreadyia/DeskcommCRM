@@ -648,7 +648,7 @@ export function entradasDaAbordagem(args: {
   estrategia: EstrategiaDoLead | null;
   voz?: string;
   previa?: PreviaSalva | null;
-}): { instrucao: string; dados: Record<string, string> } {
+}): { instrucao: string; dados: Record<string, string>; instrucaoManda: boolean } {
   const peloAgente = args.config.fonte_da_abordagem === "agente";
   const instrucaoBase = instrucaoDeAbordagemFria(
     args.config.instruction,
@@ -657,5 +657,7 @@ export function entradasDaAbordagem(args: {
     peloAgente ? null : args.estrategia,
   );
   const dados = montarDadosDeAbordagem(args.data, peloAgente ? null : args.site, args.previa ?? null);
-  return { instrucao: instrucaoBase, dados };
+  // No modo agente a instrução do operador manda no conteúdo da 1ª mensagem: `blocoDeModo`
+  // tira as regras que mandam "se apresente" e "termine com pergunta".
+  return { instrucao: instrucaoBase, dados, instrucaoManda: peloAgente };
 }

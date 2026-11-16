@@ -61,6 +61,8 @@ export interface AbordagemDeFormularioInput {
   dados: Record<string, string>;
   /** `false` quando o gatilho não é um formulário (tag, etapa, mensagem). */
   origemDaAbordagem: OrigemDaAbordagem;
+  /** Só `prospeccao_fria`: a instrução do operador define o conteúdo da 1ª mensagem. */
+  instrucaoManda?: boolean;
 }
 
 export type AbordagemDeFormularioResult =
@@ -144,6 +146,7 @@ export function blocoDeModo(
   origem: OrigemDaAbordagem,
   nonce: string,
   instrucao: string,
+  instrucaoManda = false,
 ): string {
   const situacao =
     origem === "formulario"
@@ -199,7 +202,18 @@ export function blocoDeModo(
       "- Termine com UMA pergunta aberta e fácil de recusar, para ela ter o que responder.",
     ],
   };
-  const regras = REGRAS[origem];
+  // `instrucaoManda` (campanha em "Prompt do agente"): a instrução do operador define o
+  // que a 1ª mensagem diz. As duas regras que MANDAM o conteúdo ("diga quem é você",
+  // "termine com UMA pergunta") brigavam com um "envie só a saudação" e o modelo ora
+  // obedecia a instrução, ora a regra (medido 16/11/2026: 3 de 4 saíram longas). Saem só
+  // elas; as que impedem inventar familiaridade ou preenchimento ficam.
+  const regras =
+    instrucaoManda && origem === "prospeccao_fria"
+      ? [
+          "- O que esta primeira mensagem diz é definido pela instrução abaixo, e ela manda: se pedir só uma saudação, envie SÓ a saudação (sem se apresentar, sem oferta, sem pergunta). Se pedir mais, siga-a.",
+          ...REGRAS.prospeccao_fria.slice(1, -1),
+        ]
+      : REGRAS[origem];
 
   // O delimitador protege contra injeção nos DOIS casos; o que muda é de onde o
   // texto veio. Chamar de "campos do formulário" o que foi raspado de um mapa
@@ -248,7 +262,7 @@ export async function gerarAbordagemDeFormulario(
   // O prompt do agente PRIMEIRO (é o prefixo estável, e é quem ele é); o modo
   // depois, porque é o que muda por chamada — e a instrução do OPERADOR vai
   // junto, no system, longe do conteúdo público. Ver blocoDeModo.
-  const system = `${agent.systemPrompt}\n\n${blocoDeModo(input.origemDaAbordagem, nonce, input.instrucao)}`;
+  const system = `${agent.systemPrompt}\n\n${blocoDeModo(input.origemDaAbordagem, nonce, input.instrucao, input.instrucaoManda)}`;
 
   // A mensagem do usuário carrega SÓ conteúdo — nada aqui tem autoridade.
   // `origem` é o nome da fonte, escrito por quem administra o CRM, mas entra no
