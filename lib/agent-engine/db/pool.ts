@@ -22,9 +22,24 @@ import { createLogger } from '../obs/logger';
 export const QUERY_TIMEOUT_MS = 60_000;
 const KEEPALIVE_INITIAL_DELAY_MS = 10_000;
 
+/**
+ * Ajustes por pool, para quem NÃO pode esperar sem limite (a rota de pausa da
+ * Prospecção: o navegador desiste da escrita aos 30 s, e esperar vaga na fila
+ * até lá só troca "ocupado" por "não sei se pausou"). O padrão de todos os
+ * outros pools continua o de sempre: sem teto de espera.
+ */
+export interface OpcoesDoPool {
+  max?: number;
+  /** Espera máxima por uma conexão livre. Ausente = espera sem limite. */
+  connectionTimeoutMillis?: number;
+  /** Teto de leitura da query. Ausente = `QUERY_TIMEOUT_MS`. */
+  queryTimeoutMillis?: number;
+}
+
 export function createPool(
   databaseUrl: string,
   onError?: (err: Error) => void,
+  opcoes: OpcoesDoPool = {},
 ): pg.Pool {
   // Knob opcional DB_POOL_MAX (env.ts Zod): teto de conexões por pool. Sem ele, o
   // pg decide (default 10) — o caso de produção. Os testes rodam em paralelo (N
@@ -32,7 +47,7 @@ export function createPool(
   // do servidor (invariante do vitest.config.ts). PII fora daqui: só o número.
   const raw = process.env.DB_POOL_MAX;
   const parsed = raw === undefined ? Number.NaN : Number.parseInt(raw, 10);
-  const max = Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+  const max = opcoes.max ?? (Number.isInteger(parsed) && parsed > 0 ? parsed : undefined);
   // Socket MUDO (restart do Postgres/pooler sem FIN chegar) não emite 'error':
   // a query fica pendurada para sempre e quem a espera para junto — o laço do
   // drain da IA ficou dias parado assim com o healthz dizendo ok. O teto de
@@ -46,7 +61,8 @@ export function createPool(
   const pool = new pg.Pool({
     connectionString: databaseUrl,
     max,
-    query_timeout: QUERY_TIMEOUT_MS,
+    query_timeout: opcoes.queryTimeoutMillis ?? QUERY_TIMEOUT_MS,
+    connectionTimeoutMillis: opcoes.connectionTimeoutMillis,
     keepAlive: true,
     keepAliveInitialDelayMillis: KEEPALIVE_INITIAL_DELAY_MS,
   });

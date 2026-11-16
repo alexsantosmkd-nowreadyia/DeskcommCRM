@@ -11,6 +11,7 @@ import { capabilitiesOf } from "@/lib/channels/capabilities";
 import type { ChannelProvider } from "@/lib/channels/types";
 import { ProspectingError } from "@/lib/prospecting/provider";
 import { campaignConfigSchema, prospectingInputSchema, type Prospect } from "@/lib/prospecting/schema";
+import { pausarCampanha } from "@/lib/prospecting/pausa";
 import { configPadraoDaOrganizacao } from "@/lib/prospecting/config-padrao";
 import { provedorExigeCredencialDaOrganizacao } from "@/lib/prospecting/provedor";
 import { auditarSite } from "@/lib/prospecting/site-fetch";
@@ -221,13 +222,9 @@ export async function POST(req: NextRequest) {
       result = await activateCampaign(pool, admin, org, body.id, body.config);
     else if (body.action === "pause") {
       // Pause does not wait for the worker lock; the delivery guard sees it before sending.
-      const changed = await pool.query(
-        "update prospecting_campaigns set status='paused',updated_at=now() where organization_id=$1 and id=$2 and status='running' returning id",
-        [org, body.id],
-      );
-      if (!changed.rows.length)
-        throw new ProspectingError("Campanha em execução não encontrada.", 404);
-      result = { paused: true };
+      // Pool PRÓPRIO e de espera curta: a lista da tela segura até 7 das 10 vagas do
+      // pool geral, e o "Pausar" não pode ficar na fila atrás dela.
+      result = await pausarCampanha(org, body.id);
     } else if (body.action === "adjust_pace") {
       const { previous, next } = await adjustPace(pool, org, body.id, {
         daily_limit: body.daily_limit,

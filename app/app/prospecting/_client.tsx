@@ -267,6 +267,10 @@ export function ProspectingClient() {
       (
         await apiClient.get<{ data: State }>(
           `/api/v1/prospecting${ordenar === "score" ? "?ordenar=score" : ""}`,
+          // A lista pesa centenas de KB e leva mais que os 10 s padrão: desistir
+          // cedo faz o cliente REPETIR a leitura, e o servidor termina as três
+          // sem cancelar nenhuma, enchendo o pool e atrasando o "Pausar".
+          { timeoutMs: 45_000 },
         )
       ).data,
     // A fila se completa sozinha enquanto o preparo automático tiver o que fazer

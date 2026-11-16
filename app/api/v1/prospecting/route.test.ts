@@ -24,6 +24,7 @@ vi.mock("@/lib/logger", () => ({
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({}) }));
 vi.mock("@/lib/agent-engine/db/request-pool", () => ({ getRequestPool: deps.pool }));
+vi.mock("@/lib/prospecting/pausa", () => ({ pausarCampanha: vi.fn(async () => ({ paused: true })) }));
 vi.mock("@/lib/ai/dispatcher/rate-limit", () => ({ checkRateLimit: deps.checkRateLimit }));
 vi.mock("@/lib/mcp/auth", async () => {
   const actual = await vi.importActual<typeof import("@/lib/mcp/auth")>("@/lib/mcp/auth");
