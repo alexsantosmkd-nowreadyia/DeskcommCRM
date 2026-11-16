@@ -624,22 +624,16 @@ export function montarDadosDeAbordagem(
 }
 
 /**
- * A linha que o modo `agente` acrescenta à instrução: o roteiro do PRÓPRIO agente (que já
- * abre o `system`) passa a ser a referência principal. Só entra nesse modo, para que o modo
- * `estrategia` continue byte a byte o de antes.
- */
-export const LINHA_DA_FONTE_AGENTE =
-  "Use o roteiro de abordagem das suas próprias instruções (acima) como referência principal desta mensagem. Não use ângulo de auditoria de site.";
-
-/**
  * INSTRUÇÃO e DADOS da primeira mensagem — a decisão única que o envio (`worker.ts`) e a
  * prévia (`previa-gerar.ts`) chamam, para o par tela×envio não divergir.
  *
  * - `exit_offer` diferente de `first_message`: só cumprimenta; sem estratégia, sem auditoria
  *   e sem rascunho (o de sempre).
- * - `fonte_da_abordagem = "agente"`: sem estratégia e sem `Auditoria`/`Detalhe`, com a linha
- *   que põe o roteiro do agente na frente. A moldura fria (transparência, uma pergunta por
- *   vez, critérios), a voz e o rascunho guardado continuam.
+ * - `fonte_da_abordagem = "agente"`: sem estratégia e sem `Auditoria`/`Detalhe`. NÃO acrescenta
+ *   nenhuma linha à instrução: a que mandava "usar o roteiro de abordagem das suas instruções"
+ *   fazia o modelo misturar a abertura da etapa E2 com a saudação e foi removida (16/11/2026).
+ *   A moldura fria (transparência, uma pergunta por vez, critérios), a voz e o rascunho
+ *   guardado continuam.
  * - `fonte_da_abordagem = "estrategia"` (ou ausente): exatamente o que era.
  */
 export function entradasDaAbordagem(args: {
@@ -662,7 +656,6 @@ export function entradasDaAbordagem(args: {
     args.voz || undefined,
     peloAgente ? null : args.estrategia,
   );
-  const instrucao = peloAgente ? `${instrucaoBase}\n${LINHA_DA_FONTE_AGENTE}` : instrucaoBase;
   const dados = montarDadosDeAbordagem(args.data, peloAgente ? null : args.site, args.previa ?? null);
-  return { instrucao, dados };
+  return { instrucao: instrucaoBase, dados };
 }

@@ -8,7 +8,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  LINHA_DA_FONTE_AGENTE,
   entradasDaAbordagem,
   estrategiaDoCandidato,
   instrucaoDeAbordagemFria,
@@ -61,6 +60,10 @@ function base(over: Partial<Parameters<typeof entradasDaAbordagem>[0]> = {}) {
   };
 }
 
+// A linha que o modo `agente` acrescentava e que foi removida: o modelo a lia como ordem de
+// abrir com o roteiro da etapa E2. Nenhum modo pode trazê-la de volta.
+const LINHA_REMOVIDA = "roteiro de abordagem das suas próprias instruções";
+
 describe("entradasDaAbordagem — modo `estrategia` (o de sempre)", () => {
   it("é idêntica ao que o worker fazia: instrução fria + estratégia, dados com Auditoria e rascunho", () => {
     const r = entradasDaAbordagem(base());
@@ -69,7 +72,7 @@ describe("entradasDaAbordagem — modo `estrategia` (o de sempre)", () => {
     expect(r.dados).toEqual(montarDadosDeAbordagem(DATA, SITE, PREVIA));
     // E o conteúdo, para o teste não ser só uma tautologia.
     expect(r.instrucao).toContain("Estratégia de abordagem definida para este lead");
-    expect(r.instrucao).not.toContain(LINHA_DA_FONTE_AGENTE);
+    expect(r.instrucao).not.toContain(LINHA_REMOVIDA);
     expect(r.dados["Auditoria"]).toContain("Site com problemas");
     expect(r.dados["Detalhe"]).toBe(SITE.conteudo_resumo);
     expect(r.dados["Rascunho de abordagem"]).toBe("RASCUNHO-GUARDADO");
@@ -117,10 +120,10 @@ describe("entradasDaAbordagem — modo `agente`", () => {
     const r = entradasDaAbordagem(base({ config: cfgAgente }));
     // Mesmo recebendo estratégia e site, o modo agente os ignora.
     expect(r.instrucao).toBe(
-      `${instrucaoDeAbordagemFria(INSTRUCAO, QUALIFICACAO, VOZ, null, false)}\n${LINHA_DA_FONTE_AGENTE}`,
+      instrucaoDeAbordagemFria(INSTRUCAO, QUALIFICACAO, VOZ, null, false),
     );
     expect(r.instrucao).not.toContain("Estratégia de abordagem definida");
-    expect(r.instrucao.endsWith(LINHA_DA_FONTE_AGENTE)).toBe(true);
+    expect(r.instrucao).not.toContain(LINHA_REMOVIDA);
     expect(r.dados["Auditoria"]).toBeUndefined();
     expect(r.dados["Detalhe"]).toBeUndefined();
   });
@@ -138,7 +141,7 @@ describe("entradasDaAbordagem — modo `agente`", () => {
 
   it("funciona sem site e sem estratégia (site ainda sem veredito)", () => {
     const r = entradasDaAbordagem(base({ config: cfgAgente, site: null, estrategia: null, previa: null }));
-    expect(r.instrucao).toContain(LINHA_DA_FONTE_AGENTE);
+    expect(r.instrucao).not.toContain(LINHA_REMOVIDA);
     expect(r.dados).toEqual(montarDadosDeAbordagem(DATA, null, null));
   });
 
