@@ -219,7 +219,7 @@ export async function sendNextCandidate(
     );
     return;
   }
-  if (count.campaign >= cfg.daily_limit || count.total >= 50) {
+  if (count.campaign >= cfg.daily_limit) {
     await db.query(
       "update prospecting_campaigns set next_send_at=$3 where organization_id=$1 and id=$2",
       [c.organization_id, c.id, count.retry_at],

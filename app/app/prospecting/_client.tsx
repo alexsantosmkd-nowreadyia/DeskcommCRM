@@ -473,7 +473,7 @@ export function ProspectingClient() {
     !!ritmo &&
     Number.isInteger(ritmo.daily_limit) &&
     ritmo.daily_limit >= 1 &&
-    ritmo.daily_limit <= 50 &&
+    ritmo.daily_limit <= 1000 &&
     Number.isInteger(ritmo.interval_minutes) &&
     ritmo.interval_minutes >= 5 &&
     ritmo.interval_minutes <= 1440;
@@ -1557,7 +1557,7 @@ export function ProspectingClient() {
                               id="prospecting-pace-daily"
                               type="number"
                               min={1}
-                              max={50}
+                              max={1000}
                               required
                               value={ritmo.daily_limit}
                               onChange={(e) =>
@@ -1897,7 +1897,7 @@ export function ProspectingClient() {
                                 id="prospecting-daily"
                                 type="number"
                                 min={1}
-                                max={50}
+                                max={1000}
                                 required
                                 value={config.daily_limit}
                                 onChange={(e) => update("daily_limit", Number(e.target.value))}

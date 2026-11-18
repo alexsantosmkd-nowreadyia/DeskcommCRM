@@ -11,7 +11,7 @@ import { normalizarTags, TAMANHO_MAXIMO_DA_TAG } from "@/lib/contacts/tag-normal
  * contrário. Sem `.default()`: no ajuste, valor omitido é erro, não "volta para
  * 10 sem avisar".
  */
-const LIMITE_DIARIO = z.number().int().min(1).max(50);
+const LIMITE_DIARIO = z.number().int().min(1).max(1000);
 const INTERVALO_MINUTOS = z.number().int().min(5).max(1440);
 
 /** O que a campanha vende, em prioridade. Default = comportamento atual. */
